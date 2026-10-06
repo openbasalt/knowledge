@@ -1,0 +1,10 @@
+{
+ "payloadType": "application/vnd.openbasalt.knowledge.delegation+json",
+ "payload": "eyJzY2hlbWEiOiJrYi5kZWxlZ2F0aW9uL3YwIiwibmFtZXNwYWNlIjoiYmFzYWx0Iiwia2V5Ijp7InR5cGUiOiJlZDI1NTE5LXB1YmxpYyIsImtleWlkIjoiYTNmYjliNzA3YjQ1ZTNiNDJjZDJjNjAxZDlkZDY2YTciLCJwdWJsaWMiOiJzUVNOS2FNUWJBdjRnYTBIUU1JbmlUaWd6VzBudHYydWxLNlBFNWQvaXM0PSJ9LCJub3RfYmVmb3JlIjoiMjAyNi0xMC0wNlQwMDozMzo1M1oiLCJub3RfYWZ0ZXIiOiIyMDI2LTExLTA1VDAwOjMzOjUzWiJ9",
+ "signatures": [
+  {
+   "keyid": "e0b27d154be812637814cb47a7f6bf99",
+   "sig": "9oanFgoJs+eNxh2AJGTtm5ZQV4UQrhsEMmITghwzdL0KW6O1bZfbbLdjplp16OBs5vEBwJ38EQdQofXokqGyCg=="
+  }
+ ]
+}

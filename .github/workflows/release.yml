@@ -1,0 +1,138 @@
+# Tier 2 AI review and the signed build of a release.
+#
+# Runs on a release pull request to main (label "release"), on a release
+# tag (release-*) and by hand. A stronger model re-reviews every entry
+# changed since the last release tag plus a consistency overview of each
+# whole namespace. On a tag, the signed build runs only after that review
+# passed; it signs with the publisher key from the KB_PUBLISHER_KEY secret
+# and the public keyrings in keys/<namespace>/, verifies the output and
+# keeps it as a workflow artifact for the maintainers to publish.
+name: release
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled]
+    paths: ["content/**", ".github/review-prompt.md"]
+  push:
+    tags: ["release-*"]
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "Tag or commit to review from (default: the last release-* tag)"
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+
+jobs:
+  tier2:
+    if: >-
+      github.event_name != 'pull_request' ||
+      (contains(github.event.pull_request.labels.*.name, 'release') &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    env:
+      KB_REVIEW_PROVIDER: ${{ vars.KB_REVIEW_PROVIDER || 'openai' }}
+      KB_REVIEW_MODEL: ${{ vars.KB_REVIEW_MODEL_RELEASE || 'CHANGE-ME-release-model' }}
+      KB_REVIEW_BASE_URL: ${{ vars.KB_REVIEW_BASE_URL }}
+      TRUSTED_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
+      CONTENT_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      SINCE: ${{ inputs.since }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TRUSTED_REF }}
+          path: trusted
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.CONTENT_REF }}
+          path: content-tree
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: trusted/go.mod
+          cache: false
+      - name: Build kb-review from the trusted ref
+        working-directory: trusted
+        run: go build -o "$RUNNER_TEMP/kb-review" ./cmd/kb-review
+      - name: Review everything changed since the last release
+        working-directory: content-tree
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          since="$SINCE"
+          if [ -z "$since" ]; then
+            since=$(git describe --tags --match 'release-*' --abbrev=0 "$CONTENT_REF^" 2>/dev/null || true)
+          fi
+          if [ -n "$since" ]; then
+            git diff --name-only "$since...$CONTENT_REF" -- content > "$RUNNER_TEMP/changed.txt"
+          else
+            git ls-files content > "$RUNNER_TEMP/changed.txt"
+          fi
+          set +e
+          "$RUNNER_TEMP/kb-review" -tier release -repo . \
+            -rules "$GITHUB_WORKSPACE/trusted/.github/review-prompt.md" \
+            -changed "$RUNNER_TEMP/changed.txt" \
+            -out "$RUNNER_TEMP/verdict.json" -comment "$RUNNER_TEMP/comment.md"
+          code=$?
+          cat "$RUNNER_TEMP/comment.md" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null
+          exit $code
+      - name: Post the review on the release pull request
+        if: always() && github.event_name == 'pull_request'
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          [ -f "$RUNNER_TEMP/comment.md" ] && gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"
+          state=failure
+          [ "${{ job.status }}" = success ] && state=success
+          gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$CONTENT_REF" \
+            -f state="$state" -f context="knowledge/ai-review-release" -f description="release review: $state"
+
+  signed-build:
+    needs: tier2
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/release-')
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Build, sign and verify
+        env:
+          KB_PUBLISHER_KEY: ${{ secrets.KB_PUBLISHER_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$KB_PUBLISHER_KEY" || { echo "KB_PUBLISHER_KEY is not set"; exit 1; }
+          umask 077
+          printf '%s' "$KB_PUBLISHER_KEY" > "$RUNNER_TEMP/publisher.key"
+          go build -o "$RUNNER_TEMP/kb" ./cmd/kb
+          version="${GITHUB_REF_NAME#release-}"
+          export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          mkdir -p dist/kb/v0
+          for dir in content/*/; do
+            ns=$(basename "$dir")
+            rings=$(ls keys/"$ns"/keyring-*.json | sort -V | paste -sd, -)
+            "$RUNNER_TEMP/kb" build -content "$dir" -key "$RUNNER_TEMP/publisher.key" \
+              -keyring "$rings" -version "$version" -out dist/kb/v0
+            first=$(echo "$rings" | cut -d, -f1)
+            "$RUNNER_TEMP/kb" trust -out "$RUNNER_TEMP/trust-$ns.json" "$first"
+            "$RUNNER_TEMP/kb" verify -trust "$RUNNER_TEMP/trust-$ns.json" "dist/kb/v0/$ns"
+          done
+          rm -f "$RUNNER_TEMP/publisher.key"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-bundle-${{ github.ref_name }}
+          path: dist/
+          if-no-files-found: error

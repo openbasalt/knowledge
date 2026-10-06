@@ -1,0 +1,79 @@
+# Tier 1 AI review: every pull request that changes content, before a
+# maintainer approves it. The tools and the review rules come from the base
+# branch; the pull request's files are only read, never executed. The
+# result is the commit status "knowledge/ai-review" on the head commit,
+# which branch protection requires.
+#
+# Pull requests from forks get no secrets here: a maintainer reads the
+# change and adds the "ai-review" label, which runs content-review-fork.yml.
+name: content-review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths: ["content/**"]
+
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+
+concurrency:
+  group: content-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  tier1:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      KB_REVIEW_PROVIDER: ${{ vars.KB_REVIEW_PROVIDER || 'openai' }}
+      KB_REVIEW_MODEL: ${{ vars.KB_REVIEW_MODEL_PR || 'gpt-6-luna' }}
+      KB_REVIEW_BASE_URL: ${{ vars.KB_REVIEW_BASE_URL }}
+      PR: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Trusted tools and rules (base branch)
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: trusted
+          persist-credentials: false
+      - name: Pull request files (read only)
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: trusted/go.mod
+          cache: false
+      - name: Build kb-review from the base branch
+        working-directory: trusted
+        run: go build -o "$RUNNER_TEMP/kb-review" ./cmd/kb-review
+      - name: Review
+        working-directory: pr
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          git diff --name-only "$BASE_SHA...$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
+          set +e
+          "$RUNNER_TEMP/kb-review" -tier pr -repo . \
+            -rules "$GITHUB_WORKSPACE/trusted/.github/review-prompt.md" \
+            -changed "$RUNNER_TEMP/changed.txt" \
+            -out "$RUNNER_TEMP/verdict.json" -comment "$RUNNER_TEMP/comment.md"
+          echo "code=$?" >> "$GITHUB_ENV"
+      - name: Post the review and the status
+        if: always()
+        run: |
+          state=failure; desc="AI review failed, see the comment"
+          if [ "${code:-1}" = 0 ]; then state=success; desc="AI review passed"; fi
+          [ -f "$RUNNER_TEMP/comment.md" ] && gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$HEAD_SHA" \
+            -f state="$state" -f context="knowledge/ai-review" -f description="$desc"
+          [ "$state" = success ]

@@ -1,0 +1,8 @@
+# Every change needs a review from the maintainers team.
+* @openbasalt/maintainers
+
+# Trust anchors, review rules and workflows need the same team; branch
+# protection requires a code owner review on main.
+/.github/ @openbasalt/maintainers
+/keys/ @openbasalt/maintainers
+/signing/ @openbasalt/maintainers

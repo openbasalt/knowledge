@@ -1,0 +1,73 @@
+# Tier 1 AI review for pull requests from forks, which get no secrets in
+# content-review.yml. A maintainer reads the change first and then adds the
+# "ai-review" label. This workflow runs in the base repository's context:
+# it builds the tools from the base branch and only reads the pull
+# request's files (checked out as data, never built or executed). The
+# label is removed afterwards, so new commits need a new label.
+name: content-review-fork
+
+on:
+  pull_request_target:
+    types: [labeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+
+jobs:
+  tier1:
+    if: github.event.label.name == 'ai-review' && github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    env:
+      KB_REVIEW_PROVIDER: ${{ vars.KB_REVIEW_PROVIDER || 'openai' }}
+      KB_REVIEW_MODEL: ${{ vars.KB_REVIEW_MODEL_PR || 'gpt-6-luna' }}
+      KB_REVIEW_BASE_URL: ${{ vars.KB_REVIEW_BASE_URL }}
+      PR: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Trusted tools and rules (base branch)
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: trusted
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: trusted/go.mod
+          cache: false
+      - name: Build kb-review from the base branch
+        working-directory: trusted
+        run: go build -o "$RUNNER_TEMP/kb-review" ./cmd/kb-review
+      - name: Pull request files as data
+        run: |
+          git init -q pr
+          git -C pr fetch -q --no-tags "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$BASE_SHA" "+refs/pull/$PR/head:pr-head"
+          # The fetched head must be the commit the maintainer labeled.
+          test "$(git -C pr rev-parse pr-head)" = "$HEAD_SHA"
+          git -C pr -c core.hooksPath=/dev/null checkout -q pr-head
+          git -C pr diff --name-only "$BASE_SHA...$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
+      - name: Review
+        working-directory: pr
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set +e
+          "$RUNNER_TEMP/kb-review" -tier pr -repo . \
+            -rules "$GITHUB_WORKSPACE/trusted/.github/review-prompt.md" \
+            -changed "$RUNNER_TEMP/changed.txt" \
+            -out "$RUNNER_TEMP/verdict.json" -comment "$RUNNER_TEMP/comment.md"
+          echo "code=$?" >> "$GITHUB_ENV"
+      - name: Post the review and the status, remove the label
+        if: always()
+        run: |
+          state=failure; desc="AI review failed, see the comment"
+          if [ "${code:-1}" = 0 ]; then state=success; desc="AI review passed"; fi
+          [ -f "$RUNNER_TEMP/comment.md" ] && gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$HEAD_SHA" \
+            -f state="$state" -f context="knowledge/ai-review" -f description="$desc"
+          gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --remove-label ai-review || true
+          [ "$state" = success ]

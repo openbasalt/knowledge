@@ -1,0 +1,15 @@
+{
+ "schema": "kb.trust/v0",
+ "keyrings": [
+  {
+   "payloadType": "application/vnd.openbasalt.knowledge.keyring+json",
+   "payload": "eyJzY2hlbWEiOiJrYi5rZXlyaW5nL3YwIiwibmFtZXNwYWNlIjoiYmFzYWx0IiwidmVyc2lvbiI6MSwidGhyZXNob2xkIjoxLCJrZXlzIjpbeyJ0eXBlIjoiZWQyNTUxOS1wdWJsaWMiLCJrZXlpZCI6IjE1YTBmY2NlZTVlNDNiMDczYmNlODFkMzdkMzBmZDA1IiwicHVibGljIjoibEZuUi9MeVh4NUNURkNWcE9RN3ByMDFWSVVieDdwKzExNVpiV1Q0ejJsST0iLCJyb2xlcyI6WyJyb290Il19LHsidHlwZSI6ImVkMjU1MTktcHVibGljIiwia2V5aWQiOiJlMGIyN2QxNTRiZTgxMjYzNzgxNGNiNDdhN2Y2YmY5OSIsInB1YmxpYyI6IlBUUDJjUXRvMHNhR3p5em1CWHFkZk9POU51MnA3cEFXT0RaTCtkM1lQYVE9Iiwicm9sZXMiOlsicHVibGlzaGVyIl19XX0=",
+   "signatures": [
+    {
+     "keyid": "15a0fccee5e43b073bce81d37d30fd05",
+     "sig": "RQBZrVXBIimHjJHnXYxdmZP14jE78V02eE6FhjDW9i8ZjXDoIcqeI+zxMLEifTjKQyHVIZQF4vxDMVnznUHUBA=="
+    }
+   ]
+  }
+ ]
+}

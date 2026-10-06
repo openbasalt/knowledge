@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Format and vet
+        run: make lint
+      - name: Unit tests (race detector)
+        run: go test -race ./...
+      - name: Validate content
+        run: |
+          for ns in content/*/; do
+            go run ./cmd/kb validate "$ns"
+          done
+      - name: Build with throwaway keys and run the conformance suite against kbd
+        run: KBD_PORT=18080 scripts/sample-bundle.sh "$RUNNER_TEMP/sample" --conformance
+      - name: Container image builds
+        run: docker build --build-arg VERSION="${GITHUB_SHA::12}" -t kbd:ci .

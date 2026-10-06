@@ -1,0 +1,59 @@
+# The basalt namespace: knowledge for Basalt OS (a Fedora based system).
+# Machine identifiers are English; human text lives in each entry's
+# language files. See docs/content.md.
+namespace: basalt
+title:
+  en: Basalt OS knowledge
+  pt-BR: Conhecimento do Basalt OS
+description:
+  en: Guides and fixes that most Basalt OS machines may need.
+  pt-BR: Guias e correções que a maioria das máquinas com Basalt OS pode precisar.
+languages: [en, pt-BR]
+license: Apache-2.0
+
+# The action identifiers entries may propose. A client runs only the
+# actions it implements, through its own validators and confirmation; a
+# step whose action it does not implement is shown as text and nothing
+# runs for it.
+actions:
+  - selinux.fcontext
+  - selinux.restorecon
+  - selinux.port
+  - selinux.boolean
+  - unit.restart
+  - file.restore
+  - snapshot.create
+  - snapshot.rollback
+  - snapshot.delete
+  - journal.vacuum
+  - dnf.clean
+  - repo.enable
+  - package.install
+  - mok.enroll
+  - system.reboot
+
+packs:
+  - id: nvidia-legacy-580
+    # NVIDIA Maxwell, Pascal and Volta GPUs (PCI vendor 10de). The ranges
+    # cover those chip families and are a coarse filter: the driver's own
+    # list of supported GPUs is the reference.
+    applies_to:
+      distros: [basalt, fedora]
+      hardware:
+        - bus: pci
+          vendor: "10de"
+          devices:
+            - {from: "1340", to: "13ff"}
+            - {from: "1400", to: "143f"}
+            - {from: "15f0", to: "15ff"}
+            - {from: "1617", to: "1667"}
+            - {from: "17c0", to: "17ff"}
+            - {from: "1b00", to: "1bff"}
+            - {from: "1c00", to: "1cff"}
+            - {from: "1d00", to: "1dff"}
+    title:
+      en: NVIDIA 580 legacy driver (Maxwell, Pascal, Volta)
+      pt-BR: Driver legado NVIDIA 580 (Maxwell, Pascal, Volta)
+    description:
+      en: Step by step installation of the NVIDIA 580 driver for GeForce GTX 750 to GTX 10 series and similar GPUs, with the kernel module built on the machine and Secure Boot key enrollment.
+      pt-BR: Instalação passo a passo do driver NVIDIA 580 para placas GeForce GTX 750 até a série GTX 10 e similares, com o módulo do kernel compilado na máquina e o cadastro da chave do Secure Boot.
