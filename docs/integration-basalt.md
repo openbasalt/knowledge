@@ -28,8 +28,19 @@ The assistant never searches remotely on its own.
 - When local knowledge has no confident answer, the assistant asks, in the
   person's language: "I can look this up in the Basalt OS knowledge
   service. It will send: your GPU model id (10de:1b81), your release (44)
-  and the error code EKEYREJECTED. Nothing else. Search?" with three
-  choices: this question only, always for this topic, or no.
+  and the error code EKEYREJECTED. Nothing else. The service keeps none of
+  it. The server's host keeps your IP address and the time for 30 days;
+  your question's details are not kept. Search?" with three choices: this
+  question only, always for this topic, or no.
+- The hosting sentence comes from the signed discovery document
+  (`privacy.hosting`, protocol section 7.2), not from text built into the
+  assistant, so it is right for whichever server is configured. When the
+  server declares no access logs the sentence says so; when it declares
+  nothing, the assistant says "The server's host may keep your IP address;
+  it did not say for how long." The client library's
+  `Hosting.KeepsAddresses` and `Hosting.LogsQueryBody` give the facts to
+  phrase. A host that keeps request bodies (`query_body_logged: true`)
+  keeps the question as well, and the prompt says so.
 - "Always for this topic" is stored per topic (the intent and component,
   for example `driver.install` + `nvidia`) and shown in Settings, where the
   person can review and remove each permission, and turn remote search
@@ -41,8 +52,13 @@ The assistant never searches remotely on its own.
   catalog locally (the catalog is a small signed file fetched with the
   system's package metadata or once a day, with no query attached). When
   the machine matches a pack it says so and asks before downloading: "There
-  is a guide for your GTX 1070 (NVIDIA 580 legacy driver, 22 KB). Download
-  it?" A downloaded pack works offline and answers locally from then on.
+  is a guide for your GTX 1070 (NVIDIA 580 legacy driver, 22 KB). The
+  server's host keeps your IP address for 30 days and can see which guide
+  was downloaded. Download it?" A downloaded pack works offline and answers
+  locally from then on.
+- A permission given under one hosting statement is asked again when the
+  statement changes to keep more (logs where there were none, a longer
+  retention, more fields, request bodies).
 
 ## 2. The minimized query
 
@@ -137,7 +153,7 @@ English and machine-readable:
 | Record | Holds |
 |---|---|
 | `knowledge.permission` | topic, scope (question, topic, denied), who decided |
-| `knowledge.search` | server, namespace, the structured query fields (never free text; only whether free text was sent), result ids and digests, bundle version, verification outcome |
+| `knowledge.search` | server, namespace, the structured query fields (never free text; only whether free text was sent), the hosting statement shown to the person, result ids and digests, bundle version, verification outcome |
 | `knowledge.pack` | pack id, version, digest, size, from where, verification outcome; install or removal |
 | `knowledge.proposal` | entry id and revision behind a proposal, the proposal id, what the guard found |
 

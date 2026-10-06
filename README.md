@@ -11,7 +11,14 @@ with the person's permission and without giving the machine away.
   everything and refuse anything else. The transport is not trusted.
 - Private by design: queries are structured identifiers (intent,
   component, hardware ids, package versions, error codes); free text only
-  with consent; no accounts, no cookies, no machine ids, no query logs.
+  with consent; no accounts, no cookies, no machine ids. The service keeps
+  no query content and no client addresses, only aggregate counters.
+- Honest about hosting: what the hosting layer in front of the service
+  logs is published in discovery, signed, and shown to the person before
+  a search. The reference deployment's ingress keeps access logs (client
+  address, time, method, path, status, size) for 30 days; it never sees a
+  search query in them, since searches are POST bodies, but a pack
+  download shows which pack was fetched, like a package download.
 - Content is data: entries propose steps only as identifiers of the
   client's closed action set, which the client validates and the person
   confirms.
@@ -37,7 +44,7 @@ Apache-2.0. Status: protocol version 0, draft.
 
 | Path | What |
 |---|---|
-| `cmd/kbd` | the server: read-only, verifies its data at start, signs dynamic answers, rate limits without storing addresses, logs no queries |
+| `cmd/kbd` | the server: read-only, verifies its data at start, signs dynamic answers, rate limits without storing addresses, logs no queries, publishes the operator's hosting statement |
 | `cmd/kb` | the tool: keys and keyrings, `validate`, `build`, `verify`, local and remote search, pack download, `conformance`, `mcp` (stdio MCP server) |
 | `cmd/kb-review` | the AI review step of the content pipeline (OpenAI compatible or Anthropic APIs) |
 | `client`, `signing`, `protocol` | the Go client library; standard library only |

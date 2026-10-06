@@ -38,6 +38,55 @@
         }
       }
     },
-    "privacy": { "type": "array", "items": { "type": "string" } }
+    "privacy": {
+      "description": "service: promises about the server process itself. hosting: the operator's statement about the hosting layer in front of it (proxies, ingress), which the service cannot control.",
+      "type": "object", "additionalProperties": false, "required": ["service", "hosting"],
+      "properties": {
+        "service": {
+          "type": "array", "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$", "maxLength": 64 }
+        },
+        "hosting": { "$ref": "#/$defs/hosting" }
+      }
+    }
+  },
+  "$defs": {
+    "hosting": {
+      "oneOf": [
+        {
+          "description": "Not declared: clients assume the host may keep client addresses for an unknown time.",
+          "type": "object", "additionalProperties": false, "required": ["declared"],
+          "properties": { "declared": { "const": false } }
+        },
+        {
+          "description": "Declared, with access logs.",
+          "type": "object", "additionalProperties": false,
+          "required": ["declared", "access_logs", "retention_days", "fields", "query_body_logged"],
+          "properties": {
+            "declared": { "const": true },
+            "provider": { "$ref": "#/$defs/provider" },
+            "access_logs": { "const": true },
+            "retention_days": { "type": "integer", "minimum": 0, "maximum": 3650 },
+            "fields": {
+              "type": "array", "minItems": 1, "uniqueItems": true,
+              "items": { "enum": ["ip", "time", "method", "path", "status", "size", "duration", "host", "user_agent", "referer"] }
+            },
+            "query_body_logged": { "type": "boolean" }
+          }
+        },
+        {
+          "description": "Declared, without access logs.",
+          "type": "object", "additionalProperties": false,
+          "required": ["declared", "access_logs", "query_body_logged"],
+          "properties": {
+            "declared": { "const": true },
+            "provider": { "$ref": "#/$defs/provider" },
+            "access_logs": { "const": false },
+            "query_body_logged": { "const": false }
+          }
+        }
+      ]
+    },
+    "provider": { "type": "string", "minLength": 1, "maxLength": 64 }
   }
 }

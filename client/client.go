@@ -237,6 +237,9 @@ func (c *Client) Discover(ctx context.Context) (*protocol.Discovery, error) {
 	if disc.Schema != protocol.SchemaDiscovery {
 		return nil, fmt.Errorf("discovery schema %q", disc.Schema)
 	}
+	if err := disc.Privacy.Validate(); err != nil {
+		return nil, fmt.Errorf("discovery: %v", err)
+	}
 	if !slices.Contains(disc.Versions, protocol.Version) {
 		return nil, fmt.Errorf("server speaks protocol versions %v, this client speaks %s", disc.Versions, protocol.Version)
 	}

@@ -11,8 +11,11 @@ A deployment has two parts with different needs:
 ## Recommended: kbd as a container on Quave ONE
 
 `kbd` is a small static Go binary (the image is distroless, under 20 MB)
-that serves both parts from memory. The recommended deployment is one
-container on the Quave ONE container platform.
+that serves both parts from memory. The recommended deployment, and the
+one this project chose, is one container on the Quave ONE container
+platform. Its ingress keeps access logs for up to 30 days; the service
+declares this in discovery (see "What is logged on this deployment"
+below).
 
 Image and runtime:
 
@@ -37,6 +40,11 @@ Configuration by environment (see `cmd/kbd/main.go` for the full list):
 | `KBD_ONLINE_KEY_JSON` (secret) or `KBD_ONLINE_KEY` | the online private key; the only secret |
 | `KBD_RATE`, `KBD_BURST` | per client limit, default 60 per minute, burst 20 |
 | `KBD_CLIENT_IP_HEADER` | the header the platform's ingress sets with the client address, for rate limiting only |
+| `KBD_HOSTING_ACCESS_LOGS` | `true` (the Quave ONE ingress keeps access logs) |
+| `KBD_HOSTING_RETENTION_DAYS` | `30` |
+| `KBD_HOSTING_LOG_FIELDS` | `ip,time,method,path,status,size` |
+| `KBD_HOSTING_QUERY_BODY_LOGGED` | `false` |
+| `KBD_HOSTING_PROVIDER` | `Quave ONE` (optional) |
 
 Instead of fetching, the build can be mounted read-only at `KBD_DATA`.
 A new content release is a restart (or a rolling update) with the new
@@ -50,11 +58,11 @@ Operational duties:
 - Rotate the online key on any suspicion; publish a new delegation, and
   the old key stops being accepted when its delegation expires (clients
   check every response).
-- Turn off or minimize the ingress access log of the platform for this
-  service, or make sure it keeps no client addresses and paths. kbd keeps
-  its own promises (no addresses, no query content, aggregate counters
-  only), but a proxy in front of it can log what kbd does not. Search is
-  a POST, so the query never appears in a URL either way.
+- Keep the hosting statement true. The `KBD_HOSTING_*` variables are
+  published, signed, in discovery (`privacy.hosting`, protocol section
+  7.2) and clients show them to the person before a search or a pack
+  download. Update them whenever the platform's logging changes; declare
+  at least what the platform keeps, never less.
 - Keep the publisher and root keys off the platform. Only the online key
   lives there; the worst its theft allows is withholding or reordering
   results until the delegation expires.
@@ -62,6 +70,37 @@ Operational duties:
 Static files can be served by the same container (they are part of the
 protocol paths) and, for scale and offline mirrors, also from the
 distribution's existing package mirror, unchanged.
+
+### What is logged on this deployment
+
+kbd itself keeps no query content and no client addresses, only aggregate
+counters; its log lines hold the route pattern, the status, the size and
+the duration. The platform's ingress in front of it keeps access logs
+that the service cannot turn off:
+
+| | Kept | For how long |
+|---|---|---|
+| kbd (the service) | aggregate counters; route, status, size and duration per request | process lifetime (counters), the platform's log retention (log lines) |
+| Ingress access log | client IP address, time, method, path, status, size | up to 30 days |
+| Request bodies (search queries) | not kept by either | |
+
+So a search leaves a line with the address, the time and the search path
+of the namespace, never the question. A pack, entry or keyring download
+leaves a line with its path, which names the pack or entry fetched, the
+same way a package mirror's log names the package. This is what the
+discovery document declares for this deployment, and what clients tell
+the person.
+
+### Hosts without access logs
+
+An operator who needs no record of client addresses runs kbd on a host
+without access logs: a machine of their own with kbd listening directly
+or behind a proxy with logging off, or a platform that lets logging be
+turned off. Declare it with `KBD_HOSTING_ACCESS_LOGS=false` and
+`KBD_HOSTING_QUERY_BODY_LOGGED=false`; clients then say that the host
+keeps no address. Leaving the variables unset publishes
+`{"declared": false}`, and clients say the host may keep the address for
+an unknown time, which is the honest default.
 
 ## Alternative: Cloudflare Workers and R2
 
@@ -82,7 +121,8 @@ Worker that answers discovery and search.
 - Privacy: Cloudflare terminates TLS and sees every client address and
   request; its logging and analytics settings for the zone decide what is
   kept. Search being a POST keeps the query out of URL logs, but the
-  bodies pass through the provider.
+  bodies pass through the provider. The Worker would publish the same
+  hosting statement in discovery, matching the zone's settings.
 
 ## Comparison
 
@@ -91,7 +131,7 @@ Worker that answers discovery and search.
 | Code | the reference server, conformance tested here | a second implementation to write and keep conformant |
 | Cost | one small container | about the Workers base fee |
 | Latency | one region, plus any CDN for static files | edge, worldwide |
-| Privacy | our process and the platform ingress; ingress logs configurable | the edge provider sees all traffic; zone log settings |
+| Privacy | our process keeps no addresses; the platform ingress keeps access logs (IP, time, path) for 30 days, declared in discovery | the edge provider sees all traffic; zone log settings decide what is kept |
 | Secrets | online key as a platform secret | online key as a Worker secret |
 | Offline mirrors | static files copy as they are | same |
 
