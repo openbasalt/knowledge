@@ -131,7 +131,7 @@ jobs:
             "$RUNNER_TEMP/kb" verify -trust "$RUNNER_TEMP/trust-$ns.json" "dist/kb/v0/$ns"
           done
           rm -f "$RUNNER_TEMP/publisher.key"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: signed-bundle-${{ github.ref_name }}
           path: dist/
