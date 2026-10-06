@@ -10,7 +10,7 @@ A deployment has two parts with different needs:
 
 ## Recommended: kbd as a container on Quave ONE
 
-`kbd` is a small static Go binary (the image is distroless, about 10 MB)
+`kbd` is a small static Go binary (the image is distroless, under 20 MB)
 that serves both parts from memory. The recommended deployment is one
 container on the Quave ONE container platform.
 
