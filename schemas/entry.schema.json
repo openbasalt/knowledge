@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openbasalt.org/schemas/knowledge/v0/entry.schema.json",
+  "title": "Entry payload (payloadType application/vnd.openbasalt.knowledge.entry+json)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "namespace", "id", "revision", "updated", "pack", "kind", "applies_to", "variants", "license"],
+  "properties": {
+    "schema": { "const": "kb.entry/v0" },
+    "namespace": { "$ref": "common.schema.json#/$defs/namespace" },
+    "id": { "$ref": "common.schema.json#/$defs/id" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "updated": { "type": "string", "format": "date" },
+    "pack": { "$ref": "common.schema.json#/$defs/id" },
+    "kind": { "enum": ["guide", "fix", "reference"] },
+    "intents": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/ident" } },
+    "components": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/ident" } },
+    "errors": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/errorCode" } },
+    "keywords": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 64 } },
+    "applies_to": { "$ref": "common.schema.json#/$defs/conditions" },
+    "proposals": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["id", "action", "risk"],
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
+          "action": { "$ref": "common.schema.json#/$defs/action" },
+          "params": {
+            "type": "object",
+            "propertyNames": { "pattern": "^[a-z][a-z0-9_]{0,31}$" },
+            "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 256 }
+          },
+          "risk": { "enum": ["low", "medium", "high"] },
+          "requires": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/id" } }
+        }
+      }
+    },
+    "variants": {
+      "type": "object",
+      "required": ["en"],
+      "propertyNames": { "$ref": "common.schema.json#/$defs/lang" },
+      "additionalProperties": {
+        "type": "object", "additionalProperties": false, "required": ["title", "summary", "body"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "summary": { "type": "string", "minLength": 1, "maxLength": 400 },
+          "body": { "type": "string", "minLength": 1, "description": "Markdown" },
+          "proposals": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 300 } }
+        }
+      }
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["title", "url"],
+        "properties": { "title": { "type": "string", "minLength": 1 }, "url": { "type": "string", "pattern": "^https://" } }
+      }
+    },
+    "license": { "type": "string", "minLength": 1 }
+  }
+}

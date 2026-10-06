@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openbasalt.org/schemas/knowledge/v0/pack.schema.json",
+  "title": "Pack payload (payloadType application/vnd.openbasalt.knowledge.pack+json)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "namespace", "id", "version", "created", "applies_to", "entries"],
+  "properties": {
+    "schema": { "const": "kb.pack/v0" },
+    "namespace": { "$ref": "common.schema.json#/$defs/namespace" },
+    "id": { "$ref": "common.schema.json#/$defs/id" },
+    "version": { "$ref": "common.schema.json#/$defs/version" },
+    "created": { "$ref": "common.schema.json#/$defs/time" },
+    "applies_to": { "$ref": "common.schema.json#/$defs/conditions" },
+    "entries": { "type": "array", "minItems": 1, "items": { "$ref": "envelope.schema.json" } }
+  }
+}

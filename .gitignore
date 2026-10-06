@@ -1,0 +1,6 @@
+# Build output
+/dist/
+/bin/
+# Private keys never belong in the repository.
+*.key
+*.key.json

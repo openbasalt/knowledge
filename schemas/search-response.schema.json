@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openbasalt.org/schemas/knowledge/v0/search-response.schema.json",
+  "title": "Search response payload (payloadType application/vnd.openbasalt.knowledge.search-response+json), signed by the delegated online key",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "namespace", "request_digest", "nonce", "issued_at", "bundle", "results"],
+  "properties": {
+    "schema": { "const": "kb.search.response/v0" },
+    "namespace": { "$ref": "common.schema.json#/$defs/namespace" },
+    "request_digest": { "$ref": "common.schema.json#/$defs/digest" },
+    "nonce": { "type": "string" },
+    "issued_at": { "$ref": "common.schema.json#/$defs/time" },
+    "bundle": { "$ref": "common.schema.json#/$defs/bundleRef" },
+    "results": {
+      "type": "array", "maxItems": 10,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["id", "score", "digest", "pack", "entry"],
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
+          "score": { "type": "number" },
+          "digest": { "$ref": "common.schema.json#/$defs/digest" },
+          "pack": { "$ref": "common.schema.json#/$defs/id" },
+          "matched": { "type": "array", "items": { "type": "string" } },
+          "entry": { "$ref": "envelope.schema.json" }
+        }
+      }
+    },
+    "packs": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/packRef" } }
+  }
+}

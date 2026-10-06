@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openbasalt.org/schemas/knowledge/v0/catalog.schema.json",
+  "title": "Catalog payload (payloadType application/vnd.openbasalt.knowledge.catalog+json)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "namespace", "version", "created", "packs"],
+  "properties": {
+    "schema": { "const": "kb.catalog/v0" },
+    "namespace": { "$ref": "common.schema.json#/$defs/namespace" },
+    "version": { "$ref": "common.schema.json#/$defs/version" },
+    "created": { "$ref": "common.schema.json#/$defs/time" },
+    "packs": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "version", "path", "size", "digest", "entries", "applies_to", "titles", "descriptions"],
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
+          "version": { "$ref": "common.schema.json#/$defs/version" },
+          "path": { "type": "string", "pattern": "^packs/[a-z0-9][a-z0-9-]{1,63}-[0-9][0-9.]{0,31}\\.json$" },
+          "size": { "type": "integer", "minimum": 1 },
+          "digest": { "$ref": "common.schema.json#/$defs/digest" },
+          "entries": { "type": "integer", "minimum": 1 },
+          "applies_to": { "$ref": "common.schema.json#/$defs/conditions" },
+          "titles": { "$ref": "common.schema.json#/$defs/langText", "required": ["en"] },
+          "descriptions": { "$ref": "common.schema.json#/$defs/langText", "required": ["en"] }
+        }
+      }
+    }
+  }
+}

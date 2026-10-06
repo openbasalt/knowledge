@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openbasalt.org/schemas/knowledge/v0/search-request.schema.json",
+  "title": "Search request (minimized, structured query)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "namespace", "nonce"],
+  "anyOf": [
+    { "required": ["intent"] }, { "required": ["component"] }, { "required": ["hardware"] },
+    { "required": ["packages"] }, { "required": ["errors"] }, { "required": ["free_text"] }
+  ],
+  "properties": {
+    "schema": { "const": "kb.search.request/v0" },
+    "namespace": { "$ref": "common.schema.json#/$defs/namespace" },
+    "distro": { "$ref": "common.schema.json#/$defs/distro" },
+    "release": { "$ref": "common.schema.json#/$defs/release" },
+    "arch": { "$ref": "common.schema.json#/$defs/arch" },
+    "intent": { "$ref": "common.schema.json#/$defs/ident" },
+    "component": { "$ref": "common.schema.json#/$defs/ident" },
+    "hardware": {
+      "type": "array", "maxItems": 8,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["bus", "vendor", "device"],
+        "properties": {
+          "bus": { "$ref": "common.schema.json#/$defs/bus" },
+          "vendor": { "$ref": "common.schema.json#/$defs/hex4" },
+          "device": { "$ref": "common.schema.json#/$defs/hex4" }
+        }
+      }
+    },
+    "packages": {
+      "type": "array", "maxItems": 16,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["name"],
+        "properties": {
+          "name": { "$ref": "common.schema.json#/$defs/pkgName" },
+          "version": { "$ref": "common.schema.json#/$defs/pkgVersion" }
+        }
+      }
+    },
+    "errors": { "type": "array", "maxItems": 8, "items": { "$ref": "common.schema.json#/$defs/errorCode" } },
+    "lang": { "$ref": "common.schema.json#/$defs/lang" },
+    "free_text": {
+      "description": "Only when the person allowed it for this question or topic. Never logged.",
+      "type": "object", "additionalProperties": false, "required": ["text", "consent"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 280 },
+        "consent": { "enum": ["question", "topic"] }
+      }
+    },
+    "limit": { "type": "integer", "minimum": 0, "maximum": 10 },
+    "nonce": { "type": "string", "pattern": "^[A-Za-z0-9_-]{22,43}$" }
+  }
+}

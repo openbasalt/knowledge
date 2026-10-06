@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openbasalt.org/schemas/knowledge/v0/common.schema.json",
+  "title": "Shared definitions of the knowledge protocol v0",
+  "$defs": {
+    "namespace": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,31}$" },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,63}$" },
+    "ident": { "type": "string", "maxLength": 64, "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)*$" },
+    "action": { "type": "string", "maxLength": 64, "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$" },
+    "lang": { "type": "string", "pattern": "^[a-z]{2,3}(-[A-Z]{2}|-[A-Z][a-z]{3})?$" },
+    "errorCode": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,79}$" },
+    "hex4": { "type": "string", "pattern": "^[0-9a-f]{4}$" },
+    "bus": { "enum": ["pci", "usb"] },
+    "distro": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$" },
+    "release": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._~^-]{0,31}$" },
+    "arch": { "type": "string", "pattern": "^[a-z0-9_]{1,16}$" },
+    "pkgName": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$" },
+    "pkgVersion": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+~^:-]{0,63}$" },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "version": { "type": "string", "pattern": "^[0-9][0-9.]{0,31}$" },
+    "keyid": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "time": { "type": "string", "format": "date-time" },
+    "langText": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/lang" },
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "conditions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "distros": { "type": "array", "items": { "$ref": "#/$defs/distro" } },
+        "releases": {
+          "type": "object", "additionalProperties": false,
+          "properties": { "min": { "$ref": "#/$defs/release" }, "max": { "$ref": "#/$defs/release" } }
+        },
+        "arch": { "type": "array", "items": { "$ref": "#/$defs/arch" } },
+        "hardware": {
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["bus", "vendor"],
+            "properties": {
+              "bus": { "$ref": "#/$defs/bus" },
+              "vendor": { "$ref": "#/$defs/hex4" },
+              "devices": {
+                "type": "array",
+                "items": {
+                  "type": "object", "additionalProperties": false, "required": ["from", "to"],
+                  "properties": { "from": { "$ref": "#/$defs/hex4" }, "to": { "$ref": "#/$defs/hex4" } }
+                }
+              }
+            }
+          }
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["name"],
+            "properties": {
+              "name": { "$ref": "#/$defs/pkgName" },
+              "min": { "$ref": "#/$defs/pkgVersion" },
+              "max": { "$ref": "#/$defs/pkgVersion" }
+            }
+          }
+        }
+      }
+    },
+    "packRef": {
+      "type": "object", "additionalProperties": false, "required": ["id", "version", "digest"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "version": { "$ref": "#/$defs/version" }, "digest": { "$ref": "#/$defs/digest" } }
+    },
+    "bundleRef": {
+      "type": "object", "additionalProperties": false, "required": ["version", "digest"],
+      "properties": { "version": { "$ref": "#/$defs/version" }, "digest": { "$ref": "#/$defs/digest" } }
+    }
+  }
+}

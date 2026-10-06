@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openbasalt.org/schemas/knowledge/v0/keyring.schema.json",
+  "title": "Keyring payload (payloadType application/vnd.openbasalt.knowledge.keyring+json)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "namespace", "version", "threshold", "keys"],
+  "properties": {
+    "schema": { "const": "kb.keyring/v0" },
+    "namespace": { "$ref": "common.schema.json#/$defs/namespace" },
+    "version": { "type": "integer", "minimum": 1 },
+    "threshold": { "type": "integer", "minimum": 1 },
+    "keys": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["type", "keyid", "public", "roles"],
+        "properties": {
+          "type": { "const": "ed25519-public" },
+          "keyid": { "$ref": "common.schema.json#/$defs/keyid" },
+          "public": { "type": "string", "pattern": "^[A-Za-z0-9+/]{43}=$" },
+          "roles": { "type": "array", "minItems": 1, "items": { "enum": ["root", "publisher"] } },
+          "not_before": { "$ref": "common.schema.json#/$defs/time" },
+          "not_after": { "$ref": "common.schema.json#/$defs/time" }
+        }
+      }
+    },
+    "revoked": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/keyid" } }
+  }
+}

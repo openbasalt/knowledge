@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openbasalt.org/schemas/knowledge/v0/error.schema.json",
+  "title": "Error payload (payloadType application/vnd.openbasalt.knowledge.error+json), signed by the delegated online key",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "code", "message"],
+  "properties": {
+    "schema": { "const": "kb.error/v0" },
+    "code": {
+      "enum": ["invalid_request", "unsupported_version", "unknown_namespace", "not_found", "rate_limited",
+               "payload_too_large", "free_text_without_consent", "method_not_allowed", "unsupported_media_type", "internal"]
+    },
+    "message": { "type": "string" },
+    "retry_after": { "type": "integer", "minimum": 1 },
+    "supported_versions": { "type": "array", "items": { "type": "string" } }
+  }
+}

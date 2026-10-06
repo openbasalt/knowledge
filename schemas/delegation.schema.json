@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openbasalt.org/schemas/knowledge/v0/delegation.schema.json",
+  "title": "Delegation payload (payloadType application/vnd.openbasalt.knowledge.delegation+json), signed by a publisher key",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "namespace", "key", "not_before", "not_after"],
+  "properties": {
+    "schema": { "const": "kb.delegation/v0" },
+    "namespace": { "$ref": "common.schema.json#/$defs/namespace" },
+    "key": {
+      "type": "object", "additionalProperties": false, "required": ["type", "keyid", "public"],
+      "properties": {
+        "type": { "const": "ed25519-public" },
+        "keyid": { "$ref": "common.schema.json#/$defs/keyid" },
+        "public": { "type": "string", "pattern": "^[A-Za-z0-9+/]{43}=$" }
+      }
+    },
+    "not_before": { "$ref": "common.schema.json#/$defs/time" },
+    "not_after": { "$ref": "common.schema.json#/$defs/time" }
+  }
+}

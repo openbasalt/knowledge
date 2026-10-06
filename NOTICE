@@ -1,0 +1,8 @@
+OpenBasalt Knowledge
+Copyright 2026 Edimar Cardoso and the OpenBasalt contributors.
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The envelope layout and pre-authentication encoding follow the DSSE
+specification (secure-systems-lab/dsse, Apache-2.0). Version comparison
+follows rpm's rpmvercmp algorithm, reimplemented from its description.
