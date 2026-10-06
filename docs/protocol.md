@@ -21,7 +21,10 @@ disk space. It is built for three properties at once:
 - Privacy by construction. A query is a small structured object made of
   identifiers (intent, component, hardware ids, package versions, error
   codes). Free text is optional, needs the person's consent, and is never
-  logged. There are no accounts, no machine identifiers and no cookies.
+  logged by the service. There are no accounts, no machine identifiers and
+  no cookies. What the hosting layer in front of a server logs (client
+  addresses, paths) is stated by its operator in discovery, so clients can
+  tell the person before anything is sent.
 - Content is data. An entry can propose steps only as identifiers of the
   client's own closed action set. A client validates them with its own
   rules and asks the person before anything changes. Nothing in an entry
@@ -214,14 +217,21 @@ Static answers SHOULD carry an `ETag` (the digest of the file) and honor
   ],
   "limits": {"max_request_bytes": 8192, "max_results": 10,
              "rate_limit": {"requests": 60, "seconds": 60, "burst": 20}},
-  "privacy": ["no-accounts", "no-cookies", "no-client-addresses-stored", "no-query-logging", "aggregate-counters-only"]
+  "privacy": {
+    "service": ["no-accounts", "no-cookies", "no-client-addresses-stored", "no-query-logging", "aggregate-counters-only"],
+    "hosting": {"declared": true, "provider": "Quave ONE", "access_logs": true, "retention_days": 30,
+                "fields": ["ip", "time", "method", "path", "status", "size"], "query_body_logged": false}
+  }
 }
 ```
 
 The client verifies each delegation of a namespace it trusts with that
 namespace's keyring, then the discovery envelope with the delegated key,
 and checks that `issued_at` is within 5 minutes of its clock. The
-`privacy` list is the server's signed promise (section 7).
+`privacy` object is signed with the rest of the document and has two
+parts (section 7): `service`, the promises of the server process itself,
+and `hosting`, the operator's statement about the hosting layer in front
+of it.
 
 ### 4.2 Search request
 
@@ -385,9 +395,22 @@ A conforming client:
   only through its closed action set and the person's confirmation;
 - asks before downloading a pack, and lets the person see and remove
   installed packs;
+- shows the person the server's hosting statement (section 7.2) when it
+  asks for permission to search or to download a pack, in plain words:
+  whether the host keeps client addresses, for how long, and that the
+  question's details are not kept; when the statement is not declared, it
+  says that the host may keep the address for an unknown time;
 - records what it fetched, when and why, in its own audit log.
 
 ## 7. Privacy requirements for servers
+
+A server runs behind a hosting layer (a container platform's ingress, a
+load balancer, a CDN) that it does not control. The discovery `privacy`
+object keeps the two apart: `service` holds what the server process
+promises and enforces itself; `hosting` holds what the operator states
+about the layer in front of it. A client shows both to the person.
+
+### 7.1 The service
 
 A conforming server:
 
@@ -401,10 +424,35 @@ A conforming server:
   pattern, the status, the size and the duration;
 - keeps only aggregate counters (requests per route, status and
   namespace; empty results; rate limited requests);
-- publishes these promises in the discovery `privacy` list.
+- publishes these promises in the discovery `privacy.service` list.
 
-Operators SHOULD also turn off or minimize access logging in any proxy or
-platform ingress in front of the server (see [hosting.md](hosting.md)).
+### 7.2 The hosting layer
+
+The operator states what the hosting layer keeps
+([schema](../schemas/discovery.schema.json)):
+
+| Field | Meaning |
+|---|---|
+| `declared` | `false`: the operator states nothing, and clients MUST assume the host may keep client addresses for an unknown time; `true`: the fields below are present |
+| `provider` | optional name of the hosting provider |
+| `access_logs` | whether the hosting layer keeps access logs |
+| `retention_days` | how long they are kept (only with `access_logs: true`) |
+| `fields` | what a log line holds, from `ip`, `time`, `method`, `path`, `status`, `size`, `duration`, `host`, `user_agent`, `referer` (only with `access_logs: true`) |
+| `query_body_logged` | whether request bodies are kept; search queries travel in the body, so `false` means the question's details are not kept |
+
+The statement is configuration of each deployment, never a default: a
+server that was not told what its host does publishes
+`{"declared": false}`, not a claim that there are no logs. An operator
+MUST NOT declare less than the hosting layer keeps.
+
+What the logged fields reveal: an address with a time tells that a
+machine used the service; a path tells which resource was fetched. Search
+is a POST to one path per namespace, so its log line holds no part of the
+query. A pack, an entry or a keyring is fetched by its path, so a log
+line shows which pack or entry was downloaded, like a package mirror's
+log shows which package was. Operators who need no record of client
+addresses at all choose a host without access logs and declare
+`access_logs: false` (see [hosting.md](hosting.md)).
 
 ## 8. Rate limits
 

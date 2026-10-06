@@ -40,7 +40,8 @@ MUST checks fail the run; SHOULD checks are reported.
 |---|---|---|
 | `discovery.signed` | MUST | discovery is `application/json`, valid against its schema, signed by the online key under a delegation that the pinned keyring verifies, fresh |
 | `discovery.version` | MUST | `versions` lists `0` |
-| `discovery.privacy` | MUST | the privacy list includes `no-accounts`, `no-cookies`, `no-query-logging` |
+| `discovery.privacy` | MUST | `privacy.service` includes `no-accounts`, `no-cookies`, `no-query-logging`; `privacy.hosting` is a complete statement (declared or not) |
+| `discovery.hosting_declared` | SHOULD | the operator declares what the hosting layer logs (`privacy.hosting.declared` is `true`) |
 | `search.match` | MUST | the fixture query returns the expected entry first and suggests the expected pack; the response and every entry verify, the nonce and request digest match |
 | `search.schema` | MUST | the request and the response follow their schemas; the response has `Cache-Control: no-store` |
 | `search.excludes` | MUST | conditions exclude the expected entry for hardware they do not cover |

@@ -271,10 +271,16 @@ func Run(ctx context.Context, base string, trust *signing.Trust, fx Fixture) ([]
 		return nil
 	})
 	r.check("discovery.privacy", Must, func() error {
-		for _, p := range []string{"no-accounts", "no-cookies", "no-query-logging"} {
-			if !slices.Contains(r.disc.Privacy, p) {
-				return fmt.Errorf("privacy statement %q missing", p)
+		for _, p := range protocol.RequiredPromises {
+			if !slices.Contains(r.disc.Privacy.Service, p) {
+				return fmt.Errorf("service promise %q missing", p)
 			}
+		}
+		return r.disc.Privacy.Validate()
+	})
+	r.check("discovery.hosting_declared", Should, func() error {
+		if !r.disc.Privacy.Hosting.Declared {
+			return errors.New("the operator does not declare what the hosting layer logs")
 		}
 		return nil
 	})

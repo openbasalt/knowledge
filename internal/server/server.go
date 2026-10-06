@@ -33,15 +33,6 @@ const WellKnown = "/.well-known/openbasalt-knowledge"
 // Prefix is the path prefix of protocol version 0.
 const Prefix = "/kb/v" + protocol.Version + "/"
 
-// Privacy lists what the server promises, published in discovery.
-var Privacy = []string{
-	"no-accounts",
-	"no-cookies",
-	"no-client-addresses-stored",
-	"no-query-logging",
-	"aggregate-counters-only",
-}
-
 // Config of a server.
 type Config struct {
 	Namespaces     []*build.Namespace
@@ -54,6 +45,12 @@ type Config struct {
 	ClientIPHeader string // trusted proxy header with the client address (e.g. X-Forwarded-For); empty: the TCP peer
 	Logger         *slog.Logger
 	Now            func() time.Time
+
+	// Hosting is the operator's statement about the hosting layer in front
+	// of kbd (ingress access logs and their retention), published in
+	// discovery next to the service's own promises. The zero value is
+	// "not declared": clients then assume the host may keep addresses.
+	Hosting protocol.Hosting
 }
 
 type nsState struct {
@@ -86,6 +83,9 @@ func New(cfg Config) (*Server, error) {
 	}
 	if cfg.Requests <= 0 {
 		cfg.Requests, cfg.Period, cfg.Burst = 60, time.Minute, 20
+	}
+	if err := cfg.Hosting.Validate(); err != nil {
+		return nil, fmt.Errorf("hosting statement: %v", err)
 	}
 	if cfg.Logger == nil {
 		cfg.Logger = slog.New(slog.DiscardHandler)
@@ -327,7 +327,7 @@ func (s *Server) discovery(w http.ResponseWriter, r *http.Request) {
 		Schema: protocol.SchemaDiscovery, Versions: protocol.Supported, IssuedAt: s.now().UTC().Truncate(time.Second),
 		Limits: protocol.Limits{MaxRequestBytes: protocol.MaxRequestBytes, MaxResults: protocol.MaxResults,
 			RateLimit: protocol.RateLimit{Requests: s.cfg.Requests, Seconds: int(s.cfg.Period.Seconds()), Burst: s.cfg.Burst}},
-		Privacy: Privacy,
+		Privacy: protocol.Privacy{Service: protocol.ServicePromises, Hosting: s.cfg.Hosting},
 	}
 	for _, name := range s.names {
 		n := s.ns[name]

@@ -19,6 +19,16 @@
 //	KBD_CLIENT_IP_HEADER  header set by a trusted proxy with the client address (rate limiting only)
 //	KBD_LOG_LEVEL         debug, info (default), warn or error
 //
+// The operator's statement about the hosting layer in front of kbd
+// (published in discovery as privacy.hosting; unset means "not declared",
+// never "no logs"):
+//
+//	KBD_HOSTING_ACCESS_LOGS        true or false: does the ingress or proxy keep access logs
+//	KBD_HOSTING_RETENTION_DAYS     days the access logs are kept (required when true)
+//	KBD_HOSTING_LOG_FIELDS         comma separated: ip, time, method, path, status, size, duration, host, user_agent, referer (required when true)
+//	KBD_HOSTING_QUERY_BODY_LOGGED  true or false: does it keep request bodies (required when declaring)
+//	KBD_HOSTING_PROVIDER           optional name of the hosting provider
+//
 // kbd health-check probes /healthz and exits 0 when it answers (for
 // container health checks in images without a shell).
 package main
@@ -40,6 +50,7 @@ import (
 
 	"github.com/openbasalt/knowledge/internal/build"
 	"github.com/openbasalt/knowledge/internal/server"
+	"github.com/openbasalt/knowledge/protocol"
 	"github.com/openbasalt/knowledge/signing"
 )
 
@@ -100,6 +111,59 @@ func healthCheck() int {
 	return 0
 }
 
+// hostingFromEnv reads the hosting statement through get (os.Getenv). It
+// only declares what the operator set, and refuses an incomplete
+// statement rather than publishing a partial one.
+func hostingFromEnv(get func(string) string) (protocol.Hosting, error) {
+	var h protocol.Hosting
+	flag := func(k string) (*bool, error) {
+		switch v := strings.TrimSpace(get(k)); v {
+		case "":
+			return nil, nil
+		case "true", "false":
+			b := v == "true"
+			return &b, nil
+		default:
+			return nil, fmt.Errorf("%s must be true or false", k)
+		}
+	}
+	logs, err := flag("KBD_HOSTING_ACCESS_LOGS")
+	if err != nil {
+		return h, err
+	}
+	body, err := flag("KBD_HOSTING_QUERY_BODY_LOGGED")
+	if err != nil {
+		return h, err
+	}
+	days, fields, provider := get("KBD_HOSTING_RETENTION_DAYS"), get("KBD_HOSTING_LOG_FIELDS"), get("KBD_HOSTING_PROVIDER")
+	if logs == nil {
+		if body != nil || days != "" || fields != "" || provider != "" {
+			return h, errors.New("KBD_HOSTING_* set without KBD_HOSTING_ACCESS_LOGS")
+		}
+		return h, nil
+	}
+	h.Declared, h.AccessLogs, h.QueryBodyLogged, h.Provider = true, logs, body, strings.TrimSpace(provider)
+	if body == nil {
+		return h, errors.New("KBD_HOSTING_QUERY_BODY_LOGGED is required when KBD_HOSTING_ACCESS_LOGS is set")
+	}
+	if days != "" {
+		n, err := strconv.Atoi(strings.TrimSpace(days))
+		if err != nil {
+			return h, errors.New("KBD_HOSTING_RETENTION_DAYS must be a whole number of days")
+		}
+		h.RetentionDays = &n
+	}
+	if fields != "" {
+		for _, f := range strings.Split(fields, ",") {
+			h.Fields = append(h.Fields, strings.TrimSpace(f))
+		}
+	}
+	if err := h.Validate(); err != nil {
+		return h, fmt.Errorf("KBD_HOSTING_*: %v", err)
+	}
+	return h, nil
+}
+
 func onlineKey() (*signing.Signer, error) {
 	if v := os.Getenv("KBD_ONLINE_KEY_JSON"); v != "" {
 		return signing.ParsePrivate([]byte(v))
@@ -138,6 +202,13 @@ func run(log *slog.Logger) error {
 		if err := json.Unmarshal([]byte(v), &inline); err != nil {
 			return fmt.Errorf("KBD_DELEGATIONS_JSON: %v", err)
 		}
+	}
+	hosting, err := hostingFromEnv(os.Getenv)
+	if err != nil {
+		return err
+	}
+	if !hosting.Declared {
+		log.Warn("hosting statement not declared: discovery tells clients the host may keep client addresses (set KBD_HOSTING_*)")
 	}
 	key, err := onlineKey()
 	if err != nil {
@@ -178,7 +249,7 @@ func run(log *slog.Logger) error {
 	}
 	cfg := server.Config{Online: key, Trust: trust, Delegations: map[string]*signing.Envelope{},
 		Requests: rate, Period: time.Minute, Burst: burst,
-		ClientIPHeader: os.Getenv("KBD_CLIENT_IP_HEADER"), Logger: log}
+		ClientIPHeader: os.Getenv("KBD_CLIENT_IP_HEADER"), Logger: log, Hosting: hosting}
 	for _, n := range names {
 		dir := filepath.Join(data, n)
 		if err := build.FollowKeyrings(dir, trust); err != nil {

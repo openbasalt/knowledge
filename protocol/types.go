@@ -277,7 +277,7 @@ type Discovery struct {
 	IssuedAt   time.Time       `json:"issued_at"`
 	Namespaces []NamespaceInfo `json:"namespaces"`
 	Limits     Limits          `json:"limits"`
-	Privacy    []string        `json:"privacy"`
+	Privacy    Privacy         `json:"privacy"`
 }
 
 // Error codes.

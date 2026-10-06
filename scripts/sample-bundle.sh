@@ -45,8 +45,11 @@ mkdir -p "$out/delegations"
 
 if [ "$mode" = "--conformance" ]; then
 	port=${KBD_PORT:-18080}
+	# kbd listens on loopback with no proxy in front, so the hosting layer
+	# truthfully keeps no access logs here.
 	KBD_ADDR="127.0.0.1:$port" KBD_DATA="$out/kb/v0" KBD_TRUST="$out/trust.json" \
 		KBD_ONLINE_KEY="$keys/online.key" KBD_DELEGATIONS="$out/delegations" \
+		KBD_HOSTING_ACCESS_LOGS=false KBD_HOSTING_QUERY_BODY_LOGGED=false \
 		KBD_RATE=6000 KBD_BURST=1000 KBD_LOG_LEVEL=warn "$keys/bin/kbd" &
 	kbd_pid=$!
 	for _ in $(seq 50); do

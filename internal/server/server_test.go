@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -162,5 +163,50 @@ func TestFetch(t *testing.T) {
 	}
 	if len(n.Entries) != len(kit.Loaded.Entries) {
 		t.Fatalf("%d entries fetched", len(n.Entries))
+	}
+}
+
+// Discovery publishes the service's promises and, separately, exactly the
+// hosting statement the operator configured; the default claims nothing.
+func TestDiscoveryHosting(t *testing.T) {
+	kit := testkit.New(t, "../../content/basalt", time.Now())
+	discover := func(h protocol.Hosting) *protocol.Discovery {
+		t.Helper()
+		srv, err := server.New(server.Config{Namespaces: []*build.Namespace{kit.Loaded}, Online: kit.Online,
+			Delegations: map[string]*signing.Envelope{kit.NS: kit.Delegation}, Trust: kit.Trust(t), Hosting: h})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ts := httptest.NewServer(srv)
+		defer ts.Close()
+		c, err := client.New(ts.URL, kit.Trust(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		d, err := c.Discover(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return d
+	}
+	d := discover(protocol.Hosting{})
+	if !slices.Equal(d.Privacy.Service, protocol.ServicePromises) {
+		t.Errorf("service promises %v", d.Privacy.Service)
+	}
+	if d.Privacy.Hosting.Declared || d.Privacy.Hosting.AccessLogs != nil {
+		t.Errorf("default hosting claims %+v", d.Privacy.Hosting)
+	}
+	yes, no, days := true, false, 30
+	want := protocol.Hosting{Declared: true, Provider: "Quave ONE", AccessLogs: &yes, RetentionDays: &days,
+		Fields: []string{"ip", "time", "method", "path", "status", "size"}, QueryBodyLogged: &no}
+	got := discover(want).Privacy.Hosting
+	if known, keeps, n := got.KeepsAddresses(); !known || !keeps || n != 30 || got.LogsQueryBody() || got.Provider != "Quave ONE" {
+		t.Errorf("published hosting %+v", got)
+	}
+	// An incomplete statement is refused at start, never published.
+	if _, err := server.New(server.Config{Namespaces: []*build.Namespace{kit.Loaded}, Online: kit.Online,
+		Delegations: map[string]*signing.Envelope{kit.NS: kit.Delegation}, Trust: kit.Trust(t),
+		Hosting: protocol.Hosting{Declared: true, AccessLogs: &yes, QueryBodyLogged: &no}}); err == nil {
+		t.Error("a hosting statement without retention was accepted")
 	}
 }
