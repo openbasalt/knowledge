@@ -1,0 +1,10 @@
+{
+ "payloadType": "application/vnd.openbasalt.knowledge.keyring+json",
+ "payload": "eyJzY2hlbWEiOiJrYi5rZXlyaW5nL3YwIiwibmFtZXNwYWNlIjoiYmFzYWx0IiwidmVyc2lvbiI6MSwidGhyZXNob2xkIjoxLCJrZXlzIjpbeyJ0eXBlIjoiZWQyNTUxOS1wdWJsaWMiLCJrZXlpZCI6ImM2ZDQ2YjM0MjkzMGY3Y2JjOWFlYzc2NjI5M2FmYjBiIiwicHVibGljIjoiQVYrM2JoV0J3cHFqdW05cVI2MGVabGdBVm1ZdUFsQVErSm5PL1J3NVFvOD0iLCJyb2xlcyI6WyJyb290Il19LHsidHlwZSI6ImVkMjU1MTktcHVibGljIiwia2V5aWQiOiIxMmJlZTcxMWQyZmM4NzBiZTk2NzQ4NzIwZTIwNTE4MCIsInB1YmxpYyI6ImxnelRmWmN4bTJDQWVvVmcvVlhFRkZDRDY1bURKRWRNWGhOam8wWHJtTHM9Iiwicm9sZXMiOlsicHVibGlzaGVyIl19XX0=",
+ "signatures": [
+  {
+   "keyid": "c6d46b342930f7cbc9aec766293afb0b",
+   "sig": "Oaz8d7kUZwnJhqnZBVPVQMfbYwF06cgQ2TxscCoFrZOTm7mlwsME12ZLVuUwGT8wrgm4qCY1Awv4rJsUQ/OfAw=="
+  }
+ ]
+}
