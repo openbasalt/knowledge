@@ -1,11 +1,25 @@
+# One grouped pull request per ecosystem per week: every update of an
+# ecosystem lands in a single pull request instead of one per dependency.
 version: 2
 updates:
   - package-ecosystem: gomod
     directory: /
-    schedule: {interval: weekly}
+    schedule:
+      interval: weekly
+    groups:
+      go-modules:
+        patterns: ["*"]
   - package-ecosystem: github-actions
     directory: /
-    schedule: {interval: weekly}
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
   - package-ecosystem: docker
     directory: /
-    schedule: {interval: weekly}
+    schedule:
+      interval: weekly
+    groups:
+      docker:
+        patterns: ["*"]
