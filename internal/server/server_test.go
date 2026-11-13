@@ -154,7 +154,7 @@ func TestFetch(t *testing.T) {
 	mirror := httptest.NewServer(http.StripPrefix("/kb/v0", http.FileServer(http.Dir(kit.Out))))
 	defer mirror.Close()
 	dir := t.TempDir()
-	if err := server.Fetch(context.Background(), mirror.URL, "basalt", dir); err != nil {
+	if err := server.Fetch(context.Background(), mirror.URL, "basalt", dir, kit.Trust(t)); err != nil {
 		t.Fatal(err)
 	}
 	n, err := build.LoadNamespace(dir+"/basalt", kit.Trust(t))

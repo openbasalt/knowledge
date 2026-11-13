@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -159,5 +161,36 @@ func TestBatches(t *testing.T) {
 	b := Batches([]Unit{u("a", 60), u("b", 60), u("c", 10), u("d", 200)}, 100)
 	if len(b) != 3 || len(b[0]) != 1 || len(b[1]) != 2 || len(b[2]) != 1 {
 		t.Fatalf("%v", b)
+	}
+}
+
+// A fork pull request can add a symbolic link where an entry file should
+// be. Units must refuse it instead of sending the target to a model.
+func TestUnitsRefuseSymlinks(t *testing.T) {
+	repo := t.TempDir()
+	dir := filepath.Join(repo, "content", "basalt", "entries", "x-entry")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	secret := filepath.Join(t.TempDir(), "secret")
+	if err := os.WriteFile(secret, []byte("---\nid: x\n---\nRUNNER SECRET"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "en.md"), []byte("---\nid: x-entry\n---\nok"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(secret, filepath.Join(dir, "pt-BR.md")); err != nil {
+		t.Fatal(err)
+	}
+	units, err := Units(repo, "content", []string{"content/basalt/entries/x-entry/pt-BR.md"})
+	if !errors.Is(err, source.ErrSymlink) {
+		t.Fatalf("symbolic link not refused: %v", err)
+	}
+	for _, u := range units {
+		for _, f := range u.Files {
+			if strings.Contains(f.Content, "RUNNER SECRET") {
+				t.Fatal("link target sent for review")
+			}
+		}
 	}
 }
