@@ -46,6 +46,14 @@ Configuration by environment (see `cmd/kbd/main.go` for the full list):
 | `KBD_HOSTING_QUERY_BODY_LOGGED` | `false` |
 | `KBD_HOSTING_PROVIDER` | `Quave ONE` (optional) |
 
+The mirror is not trusted. kbd downloads into a staging directory inside
+`KBD_DATA` (named `.fetch-` and a random suffix), never writes outside
+`KBD_DATA` (paths from the mirror are checked, and writes go through a
+root confined to it), verifies the staged copy against the pinned
+keyrings, and only then moves it to `KBD_DATA/<namespace>`. A fetch that
+fails verification leaves nothing behind and keeps the copy that was
+there; kbd then stops with the error.
+
 Instead of fetching, the build can be mounted read-only at `KBD_DATA`.
 A new content release is a restart (or a rolling update) with the new
 build; a new online key or delegation is a secret and variable change.
