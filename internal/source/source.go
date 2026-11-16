@@ -125,11 +125,16 @@ func SplitFrontMatter(b []byte) ([]byte, string, error) {
 }
 
 // Load reads and validates the namespace in dir. All problems are
-// returned together.
+// returned together. Symbolic links inside dir (and dir itself being one)
+// are refused, never followed: see ErrSymlink.
 func Load(dir string) (*Source, error) {
 	var probs Problems
+	dir = filepath.Clean(dir)
+	if _, err := CheckNoSymlinks(filepath.Dir(dir), filepath.Base(dir)); err != nil {
+		return nil, err
+	}
 	nsFile := filepath.Join(dir, "namespace.yaml")
-	b, err := os.ReadFile(nsFile)
+	b, err := ReadNoFollow(dir, "namespace.yaml")
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +145,9 @@ func Load(dir string) (*Source, error) {
 	probs = append(probs, checkNamespace(nsFile, &ns)...)
 
 	entriesDir := filepath.Join(dir, "entries")
+	if _, err := CheckNoSymlinks(dir, "entries"); err != nil {
+		return nil, err
+	}
 	des, err := os.ReadDir(entriesDir)
 	if err != nil {
 		return nil, err
@@ -208,9 +216,12 @@ func checkNamespace(file string, ns *Namespace) Problems {
 func loadEntry(dir string, ns *Namespace) (*protocol.Entry, Problems) {
 	var probs Problems
 	enFile := filepath.Join(dir, "en.md")
-	b, err := os.ReadFile(enFile)
-	if err != nil {
+	b, err := ReadNoFollow(dir, "en.md")
+	if errors.Is(err, os.ErrNotExist) {
 		return nil, Problems{{dir, errors.New("en.md is required")}}
+	}
+	if err != nil {
+		return nil, Problems{{enFile, err}}
 	}
 	fm, body, err := SplitFrontMatter(b)
 	if err != nil {
@@ -257,7 +268,7 @@ func loadEntry(dir string, ns *Namespace) (*protocol.Entry, Problems) {
 			probs = append(probs, Problem{file, fmt.Errorf("language %q is not listed in namespace.yaml", lang)})
 			continue
 		}
-		b, err := os.ReadFile(file)
+		b, err := ReadNoFollow(dir, filepath.Base(file))
 		if err != nil {
 			probs = append(probs, Problem{file, err})
 			continue

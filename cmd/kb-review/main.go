@@ -80,6 +80,11 @@ func run(args []string) (int, error) {
 	}
 	// Structural validation first: a model never sees content that fails it.
 	contentDir := filepath.Join(*repo, *content)
+	// The content tree comes from the pull request: a symbolic link there
+	// could point at any file of the runner, so none is followed.
+	if _, err := source.CheckNoSymlinks(*repo, *content); err != nil {
+		return 1, err
+	}
 	nsDirs, _ := filepath.Glob(filepath.Join(contentDir, "*", "namespace.yaml"))
 	var actions []string
 	var sources []*source.Source

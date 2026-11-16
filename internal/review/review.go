@@ -14,11 +14,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
+
+	"github.com/openbasalt/knowledge/internal/source"
 )
 
 // Rule ids the verdict may use. They match the sections of the rules file.
@@ -231,7 +232,8 @@ func Units(repoRoot, contentRoot string, changed []string) ([]Unit, error) {
 	var out []Unit
 	for _, u := range byID {
 		for i := range u.Files {
-			b, err := os.ReadFile(filepath.Join(repoRoot, u.Files[i].Path))
+			// Content comes from the pull request: never follow a link.
+			b, err := source.ReadNoFollow(repoRoot, filepath.FromSlash(u.Files[i].Path))
 			if err != nil {
 				return nil, err
 			}

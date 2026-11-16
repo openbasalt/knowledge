@@ -47,7 +47,10 @@ jobs:
           git -C pr fetch -q --no-tags "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$BASE_SHA" "+refs/pull/$PR/head:pr-head"
           # The fetched head must be the commit the maintainer labeled.
           test "$(git -C pr rev-parse pr-head)" = "$HEAD_SHA"
-          git -C pr -c core.hooksPath=/dev/null checkout -q pr-head
+          # Symbolic links are checked out as plain files holding the
+          # link text, so nothing in the pull request can point at a runner
+          # file (kb-review also refuses links on its own).
+          git -C pr -c core.hooksPath=/dev/null -c core.symlinks=false checkout -q pr-head
           git -C pr diff --name-only "$BASE_SHA...$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
       - name: Review
         working-directory: pr

@@ -4,7 +4,9 @@
 # container with a read-only root file system; kbd writes nothing except,
 # when KBD_FETCH_URL is set, the fetched bundle into KBD_DATA (mount a
 # small writable volume or tmpfs there). See docs/hosting.md.
-FROM golang:1.27 AS build
+# Exact patch release, kept equal to the go line in go.mod: update both
+# together. A floating tag would make the build depend on its date.
+FROM golang:1.27.4 AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

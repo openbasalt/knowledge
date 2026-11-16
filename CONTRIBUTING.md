@@ -78,6 +78,9 @@ data (it builds the tool from the base branch and never builds or runs
 anything from the fork) and removes the label. New commits need the label
 again.
 
+Symbolic links are not allowed anywhere under `content/`: `kb validate`,
+`kb build` and `kb-review` refuse them instead of following them.
+
 ## For maintainers: setup
 
 Repository secrets (Settings, Secrets and variables, Actions):

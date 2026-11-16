@@ -228,7 +228,7 @@ func run(log *slog.Logger) error {
 		}
 		for _, n := range names {
 			fctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-			err := server.Fetch(fctx, url, n, data)
+			err := server.Fetch(fctx, url, n, data, trust)
 			cancel()
 			if err != nil {
 				return fmt.Errorf("fetch %s: %v", n, err)

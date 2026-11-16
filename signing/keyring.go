@@ -277,6 +277,19 @@ func (t *Trust) Update(env *Envelope) (*Keyring, error) {
 	return next, nil
 }
 
+// Clone returns an independent trust store with the same keyrings and
+// clock, so a caller can verify untrusted data (and follow the rotations
+// it carries) without changing t until the data is accepted.
+func (t *Trust) Clone() *Trust {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	c := &Trust{rings: make(map[string]*Keyring, len(t.rings)), Now: t.Now}
+	for ns, k := range t.rings {
+		c.rings[ns] = k
+	}
+	return c
+}
+
 // Keyring returns the current keyring of a namespace.
 func (t *Trust) Keyring(ns string) (*Keyring, bool) {
 	t.mu.RLock()
